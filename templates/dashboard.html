@@ -235,6 +235,7 @@
     <div class="nav-manager">
       <div class="avatar" id="manager-avatar">—</div>
       <span id="manager-name-display">Manager</span>
+      <button onclick="logout()" style="background:transparent;border:1px solid var(--border);border-radius:var(--radius);padding:3px 10px;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font-sans);margin-left:6px;" title="Sign out">↩</button>
     </div>
   </div>
 
@@ -425,11 +426,9 @@ function formatNext(text)  { if (!text) return '<div class="text-muted">No data<
 function formatSignals(text){ if (!text) return '<div class="text-muted">No data</div>'; return text.split('\n').filter(Boolean).map(l=>`<div class="signal-item"><span class="signal-icon">⚡</span>${l.replace(/^[•\-]\s*/,'')}</div>`).join(''); }
 
 // ── Login ────────────────────────────────────────────────
-function login() {
-  const name = document.getElementById('name-input').value.trim();
-  if (!name) { document.getElementById('name-input').focus(); return; }
+function startApp(name, email) {
   managerName  = name;
-  managerEmail = document.getElementById('email-input').value.trim();
+  managerEmail = email || '';
   document.getElementById('manager-name-display').textContent = name;
   document.getElementById('manager-avatar').textContent = initials(name);
   document.getElementById('login-screen').style.display = 'none';
@@ -437,6 +436,32 @@ function login() {
   switchTab('pipeline');
   loadPortfolio();
 }
+
+function login() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { document.getElementById('name-input').focus(); return; }
+  const email = document.getElementById('email-input').value.trim();
+  // Save to localStorage for next visit
+  localStorage.setItem('vc_manager_name', name);
+  localStorage.setItem('vc_manager_email', email);
+  startApp(name, email);
+}
+
+function logout() {
+  localStorage.removeItem('vc_manager_name');
+  localStorage.removeItem('vc_manager_email');
+  location.reload();
+}
+
+// Auto-login if saved profile exists
+window.addEventListener('DOMContentLoaded', () => {
+  const savedName  = localStorage.getItem('vc_manager_name');
+  const savedEmail = localStorage.getItem('vc_manager_email') || '';
+  if (savedName) {
+    startApp(savedName, savedEmail);
+  }
+});
+
 document.getElementById('name-input').addEventListener('keydown', e => { if (e.key==='Enter') login(); });
 
 // ── Tab switching ────────────────────────────────────────
