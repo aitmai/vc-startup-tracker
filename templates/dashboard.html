@@ -772,17 +772,32 @@ async function confirmAddToPortfolio() {
     'Current Tech Stack': f['Current AWS Stack']||'', 'Next Tech Recommendations': f['Next AWS Recommendations']||'',
     'Stage Signals': f['Stage Signals']||''
   };
+  const btn = document.querySelector('#add-modal .btn-accent');
+  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
+
   try {
     const result = await apiPost(TABLE_PORTFOLIO, newRecord);
-    const newId = result.records?.[0]?.id || `local-${Date.now()}`;
+    const newId = result.records?.[0]?.id;
+
+    if (!newId) {
+      // Airtable returned but no record ID — something went wrong
+      const errMsg = result.error?.message || JSON.stringify(result).slice(0,200);
+      if (btn) { btn.textContent = 'Add to Portfolio'; btn.disabled = false; }
+      alert('Save failed: ' + errMsg + '\n\nCheck that your Airtable token has write permission.');
+      return;
+    }
+
+    // Success — saved to Airtable with real ID
     portfolioData.push({ id: newId, fields: { ...newRecord, 'Startup Name': f['Name'] } });
-    closeModal(); renderPortfolioList(); renderPipeline();
-    alert(`${f['Name']} added to your portfolio ✓`);
+    closeModal();
+    renderPortfolioList();
+    renderPipeline();
+    alert(`${f['Name']} saved to your portfolio ✓`);
+
   } catch(e) {
-    const newId = `local-${Date.now()}`;
-    portfolioData.push({ id: newId, fields: newRecord });
-    closeModal(); renderPortfolioList(); renderPipeline();
-    alert('Added locally (Airtable sync failed)');
+    if (btn) { btn.textContent = 'Add to Portfolio'; btn.disabled = false; }
+    alert('Connection error — could not save to Airtable.\n\nError: ' + e.message + '\n\nCheck your server connection and try again.');
+    console.error('Portfolio save error:', e);
   }
 }
 
