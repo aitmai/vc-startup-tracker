@@ -230,7 +230,7 @@
       <button class="nav-tab" onclick="switchTab('portfolio')" id="tab-portfolio">My Portfolio</button>
       <button class="nav-tab" onclick="switchTab('database')" id="tab-database">Full Database</button>
       <button class="nav-tab active" onclick="switchTab('pipeline')" id="tab-pipeline">Pipeline Overview</button>
-      <button class="nav-tab" onclick="switchTab('stagemap')" id="tab-stagemap">AWS Stage Map</button>
+      <button class="nav-tab" onclick="switchTab('stagemap')" id="tab-stagemap">Tech Stage Map</button>
     </div>
     <div class="nav-manager">
       <div class="avatar" id="manager-avatar">—</div>
@@ -315,16 +315,16 @@
         <div class="kanban-col"><div class="kanban-col-header"><span class="kanban-col-title" style="color:var(--yellow)">Series C+</span><span class="kanban-count" id="k-c-count">0</span></div><div class="kanban-cards" id="k-c"></div></div>
       </div>
       <div class="heatmap-section">
-        <div class="heatmap-title">🔥 Tech Services Needed Across My Portfolio</div>
+        <div class="heatmap-title">🔥 Tech Services Needed Across Portfolio</div>
         <div class="heatmap-grid" id="heatmap-grid"></div>
       </div>
     </div>
 
-    <!-- AWS Stage Map -->
+    <!-- Tech Stage Map -->
     <div id="view-stagemap" class="stagemap-view hidden">
       <div style="margin-bottom:20px">
-        <div style="font-size:20px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px">AWS Stage Map</div>
-        <div style="color:var(--muted);font-size:13px">Typical AWS service adoption at each funding stage</div>
+        <div style="font-size:20px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px">Tech Stage Map</div>
+        <div style="color:var(--muted);font-size:13px">Typical cloud infrastructure adoption at each funding stage</div>
       </div>
       <div class="stagemap-grid" id="stagemap-grid"></div>
     </div>
@@ -366,19 +366,19 @@ let dbLoaded      = false;
 
 // ── Demo portfolio (5 pre-populated examples) ───────────
 const DEMO_PORTFOLIO = [
-  { id: 'demo1', fields: { 'Startup Name': 'Airbnb', 'Sector': 'Marketplace, Travel', 'Stage': 'Series C+', 'Priority': 'High', 'Relationship Status': 'Active', 'Last Contact Date': '2026-06-28', 'Next Action': 'Q3 cloud architecture review', 'Next Action Due': '2026-07-15', 'Website': 'https://airbnb.com', 'Notes': '2026-06-28: Met with CTO re: Bedrock migration timeline.', 'Current Tech Stack': '• Multi-region EKS\n• Aurora Serverless\n• AWS Organizations\n• SageMaker\n• QuickSight', 'Next Tech Recommendations': '• AWS Marketplace listing\n• Trainium for cost optimization\n• Control Tower governance', 'Stage Signals': '• ARR crosses $10M\n• IPO preparation\n• Cloud spend $200K+/mo', 'Date Assigned': '2026-01-10', 'Source': 'YC Database' } },
-  { id: 'demo2', fields: { 'Startup Name': 'Stripe', 'Sector': 'Fintech, Payments', 'Stage': 'Series B', 'Priority': 'High', 'Relationship Status': 'Active', 'Last Contact Date': '2026-06-20', 'Next Action': 'Introduce to AWS PrivateLink team', 'Next Action Due': '2026-07-08', 'Website': 'https://stripe.com', 'Notes': '2026-06-20: Enterprise clients requesting data isolation.', 'Current Tech Stack': '• EKS multi-region\n• Aurora Serverless\n• Macie (data privacy)\n• AWS Shield', 'Next Tech Recommendations': '• AWS PrivateLink\n• AWS Outposts\n• Reserved Instances\n• AWS Marketplace listing', 'Stage Signals': '• MRR crosses $1M\n• International expansion\n• Cloud spend $50K+/mo', 'Date Assigned': '2026-02-14', 'Source': 'YC Database' } },
-  { id: 'demo3', fields: { 'Startup Name': 'Brex', 'Sector': 'Fintech, SaaS', 'Stage': 'Series A', 'Priority': 'Medium', 'Relationship Status': 'Monitoring', 'Last Contact Date': '2026-06-01', 'Next Action': 'Check in on Bedrock evaluation', 'Next Action Due': '2026-07-20', 'Website': 'https://brex.com', 'Notes': '2026-06-01: Team evaluating Amazon Bedrock for AI features.', 'Current Tech Stack': '• ECS containers\n• RDS read replicas\n• ElastiCache Redis\n• CloudFormation\n• WAF + Cognito', 'Next Tech Recommendations': '• EKS (Kubernetes)\n• Aurora Serverless\n• AWS Organizations\n• SageMaker\n• QuickSight', 'Stage Signals': '• MRR crosses $150K\n• Team grows to 25+\n• Enterprise SSO requests', 'Date Assigned': '2026-03-01', 'Source': 'Referral' } },
-  { id: 'demo4', fields: { 'Startup Name': 'Figma', 'Sector': 'Design, SaaS', 'Stage': 'Seed', 'Priority': 'Medium', 'Relationship Status': 'Active', 'Last Contact Date': '2026-05-15', 'Next Action': 'Send ECS migration guide', 'Next Action Due': '2026-07-10', 'Website': 'https://figma.com', 'Notes': '2026-05-15: Running on single EC2, needs container migration.', 'Current Tech Stack': '• EC2 (compute)\n• RDS PostgreSQL\n• S3 (storage)\n• Lambda\n• CloudWatch', 'Next Tech Recommendations': '• ECS (container orchestration)\n• ElastiCache Redis\n• ALB (load balancer)\n• Amazon Bedrock\n• CloudFormation', 'Stage Signals': '• MRR crosses $50K\n• Team grows to 10+\n• Traffic spikes break EC2', 'Date Assigned': '2026-03-22', 'Source': 'Inbound' } },
+  { id: 'demo1', fields: { 'Startup Name': 'Airbnb', 'Sector': 'Marketplace, Travel', 'Stage': 'Series C+', 'Priority': 'High', 'Relationship Status': 'Active', 'Last Contact Date': '2026-06-28', 'Next Action': 'Q3 cloud architecture review', 'Next Action Due': '2026-07-15', 'Website': 'https://airbnb.com', 'Notes': '2026-06-28: Met with CTO re: AI migration timeline.', 'Current Tech Stack': '• Multi-region EKS\n• Aurora Serverless\n• Cloud Organizations\n• SageMaker\n• QuickSight', 'Next Tech Recommendations': '• Cloud Marketplace listing\n• Trainium for cost optimization\n• Control Tower governance', 'Stage Signals': '• ARR crosses $10M\n• IPO preparation\n• Cloud spend $200K+/mo', 'Date Assigned': '2026-01-10', 'Source': 'YC Database' } },
+  { id: 'demo2', fields: { 'Startup Name': 'Stripe', 'Sector': 'Fintech, Payments', 'Stage': 'Series B', 'Priority': 'High', 'Relationship Status': 'Active', 'Last Contact Date': '2026-06-20', 'Next Action': 'Introduce to PrivateLink isolation team', 'Next Action Due': '2026-07-08', 'Website': 'https://stripe.com', 'Notes': '2026-06-20: Enterprise clients requesting data isolation.', 'Current Tech Stack': '• EKS multi-region\n• Aurora Serverless\n• Macie (data privacy)\n• DDoS protection', 'Next Tech Recommendations': '• PrivateLink (enterprise isolation)\n• On-premise hybrid cloud\n• Reserved Instances\n• Cloud Marketplace listing', 'Stage Signals': '• MRR crosses $1M\n• International expansion\n• Cloud spend $50K+/mo', 'Date Assigned': '2026-02-14', 'Source': 'YC Database' } },
+  { id: 'demo3', fields: { 'Startup Name': 'Brex', 'Sector': 'Fintech, SaaS', 'Stage': 'Series A', 'Priority': 'Medium', 'Relationship Status': 'Monitoring', 'Last Contact Date': '2026-06-01', 'Next Action': 'Check in on AI layer evaluation', 'Next Action Due': '2026-07-20', 'Website': 'https://brex.com', 'Notes': '2026-06-01: Team evaluating AI layer options.', 'Current Tech Stack': '• ECS containers\n• RDS read replicas\n• ElastiCache Redis\n• CloudFormation\n• WAF + Cognito', 'Next Tech Recommendations': '• EKS (Kubernetes)\n• Aurora Serverless\n• Cloud Organizations\n• SageMaker\n• QuickSight', 'Stage Signals': '• MRR crosses $150K\n• Team grows to 25+\n• Enterprise SSO requests', 'Date Assigned': '2026-03-01', 'Source': 'Referral' } },
+  { id: 'demo4', fields: { 'Startup Name': 'Figma', 'Sector': 'Design, SaaS', 'Stage': 'Seed', 'Priority': 'Medium', 'Relationship Status': 'Active', 'Last Contact Date': '2026-05-15', 'Next Action': 'Send ECS migration guide', 'Next Action Due': '2026-07-10', 'Website': 'https://figma.com', 'Notes': '2026-05-15: Running on single EC2, needs container migration.', 'Current Tech Stack': '• EC2 (compute)\n• RDS PostgreSQL\n• S3 (storage)\n• Lambda\n• CloudWatch', 'Next Tech Recommendations': '• ECS (container orchestration)\n• ElastiCache Redis\n• ALB (load balancer)\n• Cloud AI layer\n• CloudFormation', 'Stage Signals': '• MRR crosses $50K\n• Team grows to 10+\n• Traffic spikes break EC2', 'Date Assigned': '2026-03-22', 'Source': 'Inbound' } },
   { id: 'demo5', fields: { 'Startup Name': 'Notion', 'Sector': 'Productivity, SaaS', 'Stage': 'Pre-Seed', 'Priority': 'Low', 'Relationship Status': 'Monitoring', 'Last Contact Date': '2026-04-10', 'Next Action': 'Follow up on S3 setup', 'Next Action Due': '2026-07-25', 'Website': 'https://notion.so', 'Notes': '2026-04-10: Just launched, evaluating cloud options.', 'Current Tech Stack': '• S3 (file storage)\n• Lambda\n• API Gateway\n• Vercel (hosting)', 'Next Tech Recommendations': '• EC2 (dedicated compute)\n• RDS PostgreSQL\n• CloudWatch\n• IAM (access control)', 'Stage Signals': '• First 10 paying customers\n• MRR crosses $5K\n• Team grows to 3+', 'Date Assigned': '2026-04-05', 'Source': 'Event' } }
 ];
 
-const AWS_STAGE_MAP = {
+const STAGE_MAP = {
   'Pre-Seed': { color: '#9CA3AF', mrr: '< $5K', services: [ { name: 'S3', desc: 'File and asset storage, zero ops overhead' }, { name: 'Lambda', desc: 'Serverless functions, pay per call' }, { name: 'API Gateway', desc: 'REST API layer for Lambda functions' }, { name: 'Vercel / Render', desc: 'Frontend and app hosting' }, { name: 'IAM (basic)', desc: 'Access control from day one' } ] },
   'Seed':     { color: '#34C97B', mrr: '$5K – $50K', services: [ { name: 'EC2', desc: 'Dedicated compute for Flask/Node apps' }, { name: 'RDS PostgreSQL', desc: 'Managed relational database with backups' }, { name: 'CloudWatch', desc: 'Monitoring, logs, and alerts' }, { name: 'Lambda (async)', desc: 'Background job processing' }, { name: 'IAM (full)', desc: 'Role-based access, least privilege' } ] },
-  'Series A': { color: '#4F7EF7', mrr: '$50K – $150K', services: [ { name: 'ECS', desc: 'Container orchestration, replaces EC2' }, { name: 'Amazon Bedrock', desc: 'Generative AI — Claude, Llama, Nova' }, { name: 'ElastiCache', desc: 'Redis caching layer for scale' }, { name: 'ALB', desc: 'Load balancer across containers' }, { name: 'CloudFormation', desc: 'Infrastructure as code' }, { name: 'WAF + Cognito', desc: 'Security and enterprise auth' } ] },
-  'Series B': { color: '#9B6DF5', mrr: '$150K – $1M', services: [ { name: 'EKS', desc: 'Kubernetes at scale, multi-AZ' }, { name: 'Aurora Serverless', desc: 'Auto-scaling database' }, { name: 'AWS Organizations', desc: 'Multi-account governance' }, { name: 'SageMaker', desc: 'Custom ML model training' }, { name: 'AWS PrivateLink', desc: 'Enterprise data isolation' }, { name: 'Macie + Shield', desc: 'Data privacy + DDoS protection' } ] },
-  'Series C+': { color: '#F5C842', mrr: '$1M+', services: [ { name: 'Trainium / Inferentia', desc: 'Custom AI chips, 40-60% cost cut' }, { name: 'AWS Control Tower', desc: 'Enterprise governance at scale' }, { name: 'Reserved Instances', desc: 'Commit for 40-60% savings' }, { name: 'AWS Marketplace', desc: 'List product for enterprise distribution' }, { name: 'APN Partner', desc: 'AWS Partner Network co-sell status' }, { name: 'Graviton', desc: 'ARM processors for compute savings' } ] }
+  'Series A': { color: '#4F7EF7', mrr: '$50K – $150K', services: [ { name: 'ECS', desc: 'Container orchestration, replaces EC2' }, { name: 'Cloud AI layer', desc: 'Generative AI — Claude, Llama, Nova' }, { name: 'ElastiCache', desc: 'Redis caching layer for scale' }, { name: 'ALB', desc: 'Load balancer across containers' }, { name: 'CloudFormation', desc: 'Infrastructure as code' }, { name: 'WAF + Cognito', desc: 'Security and enterprise auth' } ] },
+  'Series B': { color: '#9B6DF5', mrr: '$150K – $1M', services: [ { name: 'EKS', desc: 'Kubernetes at scale, multi-AZ' }, { name: 'Aurora Serverless', desc: 'Auto-scaling database' }, { name: 'Cloud Organizations', desc: 'Multi-account governance' }, { name: 'SageMaker', desc: 'Custom ML model training' }, { name: 'PrivateLink (enterprise isolation)', desc: 'Enterprise data isolation' }, { name: 'Macie + Shield', desc: 'Data privacy + DDoS protection' } ] },
+  'Series C+': { color: '#F5C842', mrr: '$1M+', services: [ { name: 'Custom AI chips', desc: 'Custom AI chips, 40-60% cost cut' }, { name: 'Cloud Control Tower', desc: 'Enterprise governance at scale' }, { name: 'Reserved Instances', desc: 'Commit for 40-60% savings' }, { name: 'Cloud Marketplace', desc: 'List product for enterprise distribution' }, { name: 'Cloud Partner Network', desc: 'Cloud partner co-sell status' }, { name: 'Graviton', desc: 'ARM processors for compute savings' } ] }
 };
 
 // ── API helpers — all go through Flask backend ──────────
@@ -571,7 +571,7 @@ async function generateAdvisory(id) {
   box.classList.add('streaming');
   box.textContent = '';
 
-  const prompt = `You are an AWS Startup Investor Manager advisor. Generate a concise investment advisory for this startup:
+  const prompt = `You are a venture capital investor manager advisor. Generate a concise investment advisory for this startup:
 
 Company: ${f['Startup Name']}
 Sector: ${f['Sector']}
@@ -581,7 +581,7 @@ Next Recommendations: ${f['Next Tech Recommendations']||f['Next AWS Recommendati
 
 Provide:
 1. A 2-sentence company assessment
-2. Three specific AWS next actions (be concrete)
+2. Three specific technology infrastructure next actions (be concrete)
 3. One key risk to watch at this stage
 4. One comparable YC company that successfully made this transition
 
@@ -775,9 +775,9 @@ function renderPipeline() {
 
 function refreshPipeline() { loadPortfolio().then(()=>renderPipeline()); }
 
-// ── AWS Stage Map ────────────────────────────────────────
+// ── Tech Stage Map ────────────────────────────────────────
 function renderStageMap() {
-  document.getElementById('stagemap-grid').innerHTML=Object.entries(AWS_STAGE_MAP).map(([stage,data])=>`
+  document.getElementById('stagemap-grid').innerHTML=Object.entries(STAGE_MAP).map(([stage,data])=>`
     <div class="stagemap-col">
       <div class="stagemap-col-header"><div class="stagemap-col-title" style="color:${data.color}">${stage}</div><div class="stagemap-mrr">MRR ${data.mrr}</div></div>
       <div class="stagemap-services">${data.services.map(s=>`<div class="stagemap-service"><div class="stagemap-service-name">${s.name}</div><div class="stagemap-service-desc">${s.desc}</div></div>`).join('')}</div>
