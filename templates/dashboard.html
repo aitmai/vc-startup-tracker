@@ -479,18 +479,32 @@ function switchTab(tab) {
 
 // ── Portfolio ────────────────────────────────────────────
 async function loadPortfolio() {
-  portfolioData = [...DEMO_PORTFOLIO];
+  document.getElementById('portfolio-list').innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading portfolio...</div>';
+  try {
+    let allRecords = [];
+    let offset = null;
+    do {
+      const params = { pageSize: 100 };
+      if (offset) params.offset = offset;
+      // encode filter separately to avoid template literal issues
+      const filter = '{Assigned To} = "' + managerName + '"';
+      params.filterByFormula = filter;
+      const data = await apiGet(TABLE_PORTFOLIO, params);
+      if (data.records && data.records.length > 0) allRecords = [...allRecords, ...data.records];
+      offset = data.offset || null;
+    } while (offset);
+
+    if (allRecords.length > 0) {
+      portfolioData = allRecords;
+    } else {
+      portfolioData = [...DEMO_PORTFOLIO];
+    }
+  } catch(e) {
+    console.log('Airtable error, using demo data:', e);
+    portfolioData = [...DEMO_PORTFOLIO];
+  }
   renderPortfolioList();
   renderPipeline();
-  try {
-    const data = await apiGet(TABLE_PORTFOLIO, { filterByFormula: `{Assigned To} = "${managerName}"`, pageSize: 100 });
-    if (data.records && data.records.length > 0) {
-      const existingNames = new Set(portfolioData.map(p => p.fields['Startup Name']));
-      data.records.forEach(r => { if (!existingNames.has(r.fields['Startup Name'])) portfolioData.push(r); });
-      renderPortfolioList();
-      renderPipeline();
-    }
-  } catch(e) { console.log('Using demo data only'); }
 }
 
 function renderPortfolioList() {
