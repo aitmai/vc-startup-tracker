@@ -274,7 +274,7 @@
         <div class="search-bar">
           <div class="search-input-wrap">
             <span class="search-icon">🔍</span>
-            <input type="text" class="search-input" placeholder="Search 1,900+ startups..." oninput="filterDatabase(this.value)" />
+            <input type="text" class="search-input" placeholder="Search preloaded startups..." oninput="filterDatabase(this.value)" />
           </div>
           <div class="filter-chips" id="db-stage-chips">
             <button class="chip active" onclick="setDbFilter('all',this)">All</button>
@@ -284,6 +284,10 @@
             <button class="chip" onclick="setDbFilter('Series B',this)">Series B</button>
             <button class="chip" onclick="setDbFilter('Series C+',this)">Series C+</button>
           </div>
+          <div style="margin-top:6px;padding:8px 10px;background:rgba(79,126,247,0.08);border:1px solid rgba(79,126,247,0.2);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.5;">
+            ℹ️ <strong style="color:var(--text)">~900 YC companies preloaded</strong> (W20–present, active only).<br>
+            Can't find a startup? Use <strong style="color:var(--accent)">+ Add New Company</strong> to add it manually.
+          </div>
         </div>
         <div class="company-list" id="database-list"><div class="loading-row"><div class="spinner"></div> Loading startups...</div></div>
       </div>
@@ -291,7 +295,7 @@
         <div class="empty-state">
           <div class="empty-icon">🔭</div>
           <div class="empty-title">Search the database</div>
-          <div class="empty-desc">Browse 1,900+ real YC companies. Add any startup to your portfolio.</div>
+          <div class="empty-desc">Browse ~900 preloaded YC companies (W20–present). Can't find one? Add it manually with the button above.</div>
         </div>
       </div>
     </div>
@@ -683,7 +687,7 @@ async function loadMoreDatabase() {
 function renderDatabaseList(items) {
   const data = items || (dbFilter === 'all' ? databaseData : databaseData.filter(r => r.fields['Stage'] === dbFilter));
   const list = document.getElementById('database-list');
-  if (!data.length) { list.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><button class="btn-secondary mt-8" onclick="openAddModal()">+ Add New Company</button></div>`; return; }
+  if (!data.length) { list.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Not in database</div><div class="empty-desc">Only ~900 YC companies (W20–present) are preloaded. Add this startup manually.</div><button class="btn-accent mt-8" onclick="openAddModal()">+ Add New Company</button></div>`; return; }
   const show = data.slice(0, 200);
   list.innerHTML = show.map(r => `<div class="company-item" onclick="selectDbCompany('${r.id}')" id="dbitem-${r.id}">
     <div class="company-item-top"><div class="company-name">${r.fields['Name']||'Unknown'}</div><span class="badge ${stageBadgeClass(r.fields['Stage'])}">${r.fields['Stage']||'Seed'}</span></div>
