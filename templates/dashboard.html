@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VC Startup Tracker</title>
+<style>
+  :root {
+    --bg:        #0D0F14;
+    --surface:   #161920;
+    --surface2:  #1E222D;
+    --border:    #2A2F3D;
+    --border2:   #353B4D;
+    --text:      #E8EAF0;
+    --muted:     #7C8299;
+    --accent:    #4F7EF7;
+    --accent2:   #7B5CF0;
+    --green:     #34C97B;
+    --yellow:    #F5C842;
+    --red:       #F05C5C;
+    --orange:    #F07D3C;
+    --purple:    #9B6DF5;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --radius:    8px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
+
+  /* Login */
+  #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 24px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 48px; width: 400px; text-align: center; }
+  .login-logo { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+  .login-sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+  .login-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; color: var(--text); font-size: 14px; font-family: var(--font-sans); margin-bottom: 12px; outline: none; transition: border-color 0.2s; }
+  .login-input:focus { border-color: var(--accent); }
+  .btn-primary { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .btn-primary:hover { opacity: 0.85; }
+
+  /* App shell */
+  #app { display: none; height: 100vh; flex-direction: column; }
+  .topnav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .nav-brand { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab { padding: 6px 16px; border-radius: var(--radius); border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: var(--font-sans); }
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active { color: var(--text); background: var(--surface2); }
+  .nav-manager { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+  .main { flex: 1; overflow: hidden; display: flex; }
+
+  /* Two-panel */
+  .panel-layout { display: flex; width: 100%; overflow: hidden; }
+  .panel-left { width: 320px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-right { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Search */
+  .search-bar { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .search-input-wrap { position: relative; }
+  .search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px 8px 32px; color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; transition: border-color 0.2s; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: var(--font-sans); }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { border-color: var(--accent); background: rgba(79,126,247,0.12); color: var(--accent); }
+
+  /* Company list */
+  .company-list { flex: 1; overflow-y: auto; }
+  .company-item { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  .company-item:hover { background: var(--surface2); }
+  .company-item.active { background: var(--surface2); border-left: 2px solid var(--accent); }
+  .company-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .company-name { font-weight: 600; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .company-item-meta { display: flex; align-items: center; gap: 6px; }
+  .company-desc { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+  .badge-preseed { background: rgba(107,114,128,0.2); color: #9CA3AF; }
+  .badge-seed    { background: rgba(52,201,123,0.15); color: var(--green); }
+  .badge-a       { background: rgba(79,126,247,0.15); color: var(--accent); }
+  .badge-b       { background: rgba(155,109,245,0.15); color: var(--purple); }
+  .badge-c       { background: rgba(245,200,66,0.15); color: var(--yellow); }
+  .badge-high    { background: rgba(240,92,92,0.15); color: var(--red); }
+  .badge-medium  { background: rgba(245,200,66,0.15); color: var(--yellow); }
+  .badge-low     { background: rgba(107,114,128,0.2); color: #9CA3AF; }
+  .badge-active  { background: rgba(52,201,123,0.15); color: var(--green); }
+  .badge-monitoring { background: rgba(245,200,66,0.15); color: var(--yellow); }
+  .badge-dormant { background: rgba(107,114,128,0.2); color: #9CA3AF; }
+
+  /* Detail */
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+  .detail-title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+  .detail-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .detail-link { color: var(--accent); font-size: 12px; text-decoration: none; }
+  .detail-link:hover { text-decoration: underline; }
+  .detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn-secondary { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 16px; color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: var(--font-sans); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-accent { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: var(--radius); padding: 8px 16px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; font-family: var(--font-sans); }
+  .btn-accent:hover { opacity: 0.85; }
+
+  /* Stage stepper */
+  .stage-stepper { display: flex; align-items: center; margin-bottom: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .stage-step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+  .stage-step:not(:last-child)::after { content: ''; position: absolute; right: -50%; top: 14px; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+  .stage-step.done:not(:last-child)::after { background: var(--accent); }
+  .stage-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; z-index: 1; position: relative; transition: all 0.2s; }
+  .stage-step.done .stage-dot { border-color: var(--accent); background: rgba(79,126,247,0.2); color: var(--accent); }
+  .stage-step.current .stage-dot { border-color: var(--green); background: rgba(52,201,123,0.2); color: var(--green); box-shadow: 0 0 12px rgba(52,201,123,0.3); }
+  .stage-label { font-size: 10px; color: var(--muted); margin-top: 6px; font-weight: 500; }
+  .stage-step.current .stage-label { color: var(--green); }
+  .stage-step.done .stage-label { color: var(--accent); }
+
+  /* Cards */
+  .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+  .card-full { grid-column: 1 / -1; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 14px; }
+  .stack-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text); }
+  .stack-item:last-child { border-bottom: none; }
+  .stack-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-green { background: var(--green); }
+  .dot-blue  { background: var(--accent); }
+  .dot-yellow{ background: var(--yellow); }
+  .signal-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .signal-item:last-child { border-bottom: none; }
+  .signal-icon { color: var(--yellow); flex-shrink: 0; margin-top: 1px; }
+
+  /* Notes */
+  .notes-textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; color: var(--text); font-size: 13px; font-family: var(--font-sans); resize: vertical; min-height: 80px; outline: none; transition: border-color 0.2s; line-height: 1.5; }
+  .notes-textarea:focus { border-color: var(--accent); }
+  .notes-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .btn-save { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); transition: all 0.15s; }
+  .btn-save:hover { border-color: var(--green); color: var(--green); }
+
+  /* Advisory */
+  .advisory-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; min-height: 60px; }
+  .advisory-box.streaming { border-color: var(--accent); }
+
+  /* Pipeline */
+  .pipeline-view { padding: 24px; overflow-y: auto; width: 100%; }
+  .pipeline-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .pipeline-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+  .stat-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; font-family: var(--font-mono); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Kanban */
+  .kanban { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .kanban-col-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .kanban-col-title { font-size: 12px; font-weight: 600; }
+  .kanban-count { background: var(--surface2); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 600; color: var(--muted); font-family: var(--font-mono); }
+  .kanban-cards { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; }
+  .kanban-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; cursor: pointer; transition: border-color 0.15s; }
+  .kanban-card:hover { border-color: var(--accent); }
+  .kanban-card-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kanban-card-meta { display: flex; align-items: center; justify-content: space-between; }
+  .kanban-card-sector { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+
+  /* Heatmap */
+  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 24px; }
+  .heatmap-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+  .heatmap-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .heatmap-item { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+  .heatmap-count { background: rgba(79,126,247,0.2); color: var(--accent); border-radius: 20px; padding: 1px 6px; font-size: 10px; font-weight: 700; font-family: var(--font-mono); }
+
+  /* Stage map */
+  .stagemap-view { padding: 24px; overflow-y: auto; width: 100%; }
+  .stagemap-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .stagemap-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .stagemap-col-header { padding: 14px; border-bottom: 1px solid var(--border); text-align: center; }
+  .stagemap-col-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .stagemap-mrr { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+  .stagemap-services { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .stagemap-service { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-size: 11px; color: var(--text); }
+  .stagemap-service-name { font-weight: 600; margin-bottom: 2px; }
+  .stagemap-service-desc { color: var(--muted); font-size: 10px; line-height: 1.4; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; width: 440px; max-height: 80vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+  .form-row { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .form-select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; color: var(--text); font-size: 13px; font-family: var(--font-sans); outline: none; cursor: pointer; }
+  .form-select:focus { border-color: var(--accent); }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  /* Empty / loading */
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted); text-align: center; gap: 12px; }
+  .empty-icon { font-size: 32px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .empty-desc { font-size: 13px; max-width: 260px; line-height: 1.6; }
+  .loading-row { display: flex; align-items: center; justify-content: center; padding: 24px; color: var(--muted); font-size: 13px; gap: 8px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+  .hidden { display: none !important; }
+  .mt-8 { margin-top: 8px; }
+  .text-muted { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">⚡ VC Startup Tracker</div>
+    <div class="login-sub">Investor Portfolio Intelligence</div>
+    <input type="text" class="login-input" id="name-input" placeholder="Your full name" />
+    <input type="email" class="login-input" id="email-input" placeholder="Your email (optional)" />
+    <button class="btn-primary" onclick="login()">Enter Dashboard</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="topnav">
+    <div class="nav-brand">⚡ VC Startup Tracker</div>
+    <div class="nav-tabs">
+      <button class="nav-tab" onclick="switchTab('portfolio')" id="tab-portfolio">My Portfolio</button>
+      <button class="nav-tab" onclick="switchTab('database')" id="tab-database">Full Database</button>
+      <button class="nav-tab active" onclick="switchTab('pipeline')" id="tab-pipeline">Pipeline Overview</button>
+      <button class="nav-tab" onclick="switchTab('stagemap')" id="tab-stagemap">AWS Stage Map</button>
+    </div>
+    <div class="nav-manager">
+      <div class="avatar" id="manager-avatar">—</div>
+      <span id="manager-name-display">Manager</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- My Portfolio -->
+    <div id="view-portfolio" class="panel-layout hidden">
+      <div class="panel-left">
+        <div class="search-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Search my portfolio..." oninput="filterPortfolio(this.value)" />
+          </div>
+          <div class="filter-chips" id="portfolio-stage-chips">
+            <button class="chip active" onclick="setPortfolioFilter('all',this)">All</button>
+            <button class="chip" onclick="setPortfolioFilter('Pre-Seed',this)">Pre-Seed</button>
+            <button class="chip" onclick="setPortfolioFilter('Seed',this)">Seed</button>
+            <button class="chip" onclick="setPortfolioFilter('Series A',this)">Series A</button>
+            <button class="chip" onclick="setPortfolioFilter('Series B',this)">Series B</button>
+            <button class="chip" onclick="setPortfolioFilter('Series C+',this)">Series C+</button>
+          </div>
+        </div>
+        <div class="company-list" id="portfolio-list"></div>
+      </div>
+      <div class="panel-right" id="portfolio-detail">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">Select a startup</div>
+          <div class="empty-desc">Choose a company from your portfolio to view details and recommendations.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Database -->
+    <div id="view-database" class="panel-layout hidden">
+      <div class="panel-left">
+        <div class="search-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Search 1,900+ startups..." oninput="filterDatabase(this.value)" />
+          </div>
+          <div class="filter-chips" id="db-stage-chips">
+            <button class="chip active" onclick="setDbFilter('all',this)">All</button>
+            <button class="chip" onclick="setDbFilter('Pre-Seed',this)">Pre-Seed</button>
+            <button class="chip" onclick="setDbFilter('Seed',this)">Seed</button>
+            <button class="chip" onclick="setDbFilter('Series A',this)">Series A</button>
+            <button class="chip" onclick="setDbFilter('Series B',this)">Series B</button>
+            <button class="chip" onclick="setDbFilter('Series C+',this)">Series C+</button>
+          </div>
+        </div>
+        <div class="company-list" id="database-list"><div class="loading-row"><div class="spinner"></div> Loading startups...</div></div>
+      </div>
+      <div class="panel-right" id="database-detail">
+        <div class="empty-state">
+          <div class="empty-icon">🔭</div>
+          <div class="empty-title">Search the database</div>
+          <div class="empty-desc">Browse 1,900+ real YC companies. Add any startup to your portfolio.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline Overview -->
+    <div id="view-pipeline" class="pipeline-view">
+      <div class="pipeline-header">
+        <div class="pipeline-title">Pipeline Overview</div>
+        <button class="btn-secondary" onclick="refreshPipeline()">↻ Refresh</button>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Assigned</div><div class="stat-value" id="stat-total" style="color:var(--accent)">—</div><div class="stat-sub">in my portfolio</div></div>
+        <div class="stat-card"><div class="stat-label">High Priority</div><div class="stat-value" id="stat-high" style="color:var(--red)">—</div><div class="stat-sub">need attention</div></div>
+        <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="stat-active" style="color:var(--green)">—</div><div class="stat-sub">relationship status</div></div>
+        <div class="stat-card"><div class="stat-label">Overdue Actions</div><div class="stat-value" id="stat-overdue" style="color:var(--yellow)">—</div><div class="stat-sub">past due date</div></div>
+      </div>
+      <div class="kanban">
+        <div class="kanban-col"><div class="kanban-col-header"><span class="kanban-col-title" style="color:#9CA3AF">Pre-Seed</span><span class="kanban-count" id="k-preseed-count">0</span></div><div class="kanban-cards" id="k-preseed"></div></div>
+        <div class="kanban-col"><div class="kanban-col-header"><span class="kanban-col-title" style="color:var(--green)">Seed</span><span class="kanban-count" id="k-seed-count">0</span></div><div class="kanban-cards" id="k-seed"></div></div>
+        <div class="kanban-col"><div class="kanban-col-header"><span class="kanban-col-title" style="color:var(--accent)">Series A</span><span class="kanban-count" id="k-a-count">0</span></div><div class="kanban-cards" id="k-a"></div></div>
+        <div class="kanban-col"><div class="kanban-col-header"><span class="kanban-col-title" style="color:var(--purple)">Series B</span><span class="kanban-count" id="k-b-count">0</span></div><div class="kanban-cards" id="k-b"></div></div>
+        <div class="kanban-col"><div class="kanban-col-header"><span class="kanban-col-title" style="color:var(--yellow)">Series C+</span><span class="kanban-count" id="k-c-count">0</span></div><div class="kanban-cards" id="k-c"></div></div>
+      </div>
+      <div class="heatmap-section">
+        <div class="heatmap-title">🔥 Tech Services Needed Across My Portfolio</div>
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+    </div>
+
+    <!-- AWS Stage Map -->
+    <div id="view-stagemap" class="stagemap-view hidden">
+      <div style="margin-bottom:20px">
+        <div style="font-size:20px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px">AWS Stage Map</div>
+        <div style="color:var(--muted);font-size:13px">Typical AWS service adoption at each funding stage</div>
+      </div>
+      <div class="stagemap-grid" id="stagemap-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add to Portfolio Modal -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">Add to My Portfolio</div>
+    <div id="modal-company-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:16px;font-size:13px;"></div>
+    <div class="form-row"><label class="form-label">Priority</label><select class="form-select" id="modal-priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+    <div class="form-row"><label class="form-label">Relationship Status</label><select class="form-select" id="modal-status"><option selected>Active</option><option>Monitoring</option><option>Dormant</option></select></div>
+    <div class="form-row"><label class="form-label">Next Action</label><input type="text" class="login-input" id="modal-action" placeholder="e.g. Schedule intro call" style="margin-bottom:0" /></div>
+    <div class="form-row"><label class="form-label">Notes</label><textarea class="notes-textarea" id="modal-notes" placeholder="Initial notes..." style="min-height:60px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-accent" onclick="confirmAddToPortfolio()">Add to Portfolio</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── All API calls go through Flask backend ──────────────
+// No tokens in the browser — everything proxied via /api/
+
+const TABLE_STARTUPS  = 'startups';
+const TABLE_PORTFOLIO = 'manager_portfolio';
+
+let managerName   = '';
+let managerEmail  = '';
+let portfolioData = [];
+let databaseData  = [];
+let dbFilter      = 'all';
+let portfolioFilter = 'all';
+let pendingAddCompany = null;
+let dbOffset      = null;
+let dbLoaded      = false;
+
+// ── Demo portfolio (5 pre-populated examples) ───────────
+const DEMO_PORTFOLIO = [
+  { id: 'demo1', fields: { 'Startup Name': 'Airbnb', 'Sector': 'Marketplace, Travel', 'Stage': 'Series C+', 'Priority': 'High', 'Relationship Status': 'Active', 'Last Contact Date': '2026-06-28', 'Next Action': 'Q3 cloud architecture review', 'Next Action Due': '2026-07-15', 'Website': 'https://airbnb.com', 'Notes': '2026-06-28: Met with CTO re: Bedrock migration timeline.', 'Current Tech Stack': '• Multi-region EKS\n• Aurora Serverless\n• AWS Organizations\n• SageMaker\n• QuickSight', 'Next Tech Recommendations': '• AWS Marketplace listing\n• Trainium for cost optimization\n• Control Tower governance', 'Stage Signals': '• ARR crosses $10M\n• IPO preparation\n• Cloud spend $200K+/mo', 'Date Assigned': '2026-01-10', 'Source': 'YC Database' } },
+  { id: 'demo2', fields: { 'Startup Name': 'Stripe', 'Sector': 'Fintech, Payments', 'Stage': 'Series B', 'Priority': 'High', 'Relationship Status': 'Active', 'Last Contact Date': '2026-06-20', 'Next Action': 'Introduce to AWS PrivateLink team', 'Next Action Due': '2026-07-08', 'Website': 'https://stripe.com', 'Notes': '2026-06-20: Enterprise clients requesting data isolation.', 'Current Tech Stack': '• EKS multi-region\n• Aurora Serverless\n• Macie (data privacy)\n• AWS Shield', 'Next Tech Recommendations': '• AWS PrivateLink\n• AWS Outposts\n• Reserved Instances\n• AWS Marketplace listing', 'Stage Signals': '• MRR crosses $1M\n• International expansion\n• Cloud spend $50K+/mo', 'Date Assigned': '2026-02-14', 'Source': 'YC Database' } },
+  { id: 'demo3', fields: { 'Startup Name': 'Brex', 'Sector': 'Fintech, SaaS', 'Stage': 'Series A', 'Priority': 'Medium', 'Relationship Status': 'Monitoring', 'Last Contact Date': '2026-06-01', 'Next Action': 'Check in on Bedrock evaluation', 'Next Action Due': '2026-07-20', 'Website': 'https://brex.com', 'Notes': '2026-06-01: Team evaluating Amazon Bedrock for AI features.', 'Current Tech Stack': '• ECS containers\n• RDS read replicas\n• ElastiCache Redis\n• CloudFormation\n• WAF + Cognito', 'Next Tech Recommendations': '• EKS (Kubernetes)\n• Aurora Serverless\n• AWS Organizations\n• SageMaker\n• QuickSight', 'Stage Signals': '• MRR crosses $150K\n• Team grows to 25+\n• Enterprise SSO requests', 'Date Assigned': '2026-03-01', 'Source': 'Referral' } },
+  { id: 'demo4', fields: { 'Startup Name': 'Figma', 'Sector': 'Design, SaaS', 'Stage': 'Seed', 'Priority': 'Medium', 'Relationship Status': 'Active', 'Last Contact Date': '2026-05-15', 'Next Action': 'Send ECS migration guide', 'Next Action Due': '2026-07-10', 'Website': 'https://figma.com', 'Notes': '2026-05-15: Running on single EC2, needs container migration.', 'Current Tech Stack': '• EC2 (compute)\n• RDS PostgreSQL\n• S3 (storage)\n• Lambda\n• CloudWatch', 'Next Tech Recommendations': '• ECS (container orchestration)\n• ElastiCache Redis\n• ALB (load balancer)\n• Amazon Bedrock\n• CloudFormation', 'Stage Signals': '• MRR crosses $50K\n• Team grows to 10+\n• Traffic spikes break EC2', 'Date Assigned': '2026-03-22', 'Source': 'Inbound' } },
+  { id: 'demo5', fields: { 'Startup Name': 'Notion', 'Sector': 'Productivity, SaaS', 'Stage': 'Pre-Seed', 'Priority': 'Low', 'Relationship Status': 'Monitoring', 'Last Contact Date': '2026-04-10', 'Next Action': 'Follow up on S3 setup', 'Next Action Due': '2026-07-25', 'Website': 'https://notion.so', 'Notes': '2026-04-10: Just launched, evaluating cloud options.', 'Current Tech Stack': '• S3 (file storage)\n• Lambda\n• API Gateway\n• Vercel (hosting)', 'Next Tech Recommendations': '• EC2 (dedicated compute)\n• RDS PostgreSQL\n• CloudWatch\n• IAM (access control)', 'Stage Signals': '• First 10 paying customers\n• MRR crosses $5K\n• Team grows to 3+', 'Date Assigned': '2026-04-05', 'Source': 'Event' } }
+];
+
+const AWS_STAGE_MAP = {
+  'Pre-Seed': { color: '#9CA3AF', mrr: '< $5K', services: [ { name: 'S3', desc: 'File and asset storage, zero ops overhead' }, { name: 'Lambda', desc: 'Serverless functions, pay per call' }, { name: 'API Gateway', desc: 'REST API layer for Lambda functions' }, { name: 'Vercel / Render', desc: 'Frontend and app hosting' }, { name: 'IAM (basic)', desc: 'Access control from day one' } ] },
+  'Seed':     { color: '#34C97B', mrr: '$5K – $50K', services: [ { name: 'EC2', desc: 'Dedicated compute for Flask/Node apps' }, { name: 'RDS PostgreSQL', desc: 'Managed relational database with backups' }, { name: 'CloudWatch', desc: 'Monitoring, logs, and alerts' }, { name: 'Lambda (async)', desc: 'Background job processing' }, { name: 'IAM (full)', desc: 'Role-based access, least privilege' } ] },
+  'Series A': { color: '#4F7EF7', mrr: '$50K – $150K', services: [ { name: 'ECS', desc: 'Container orchestration, replaces EC2' }, { name: 'Amazon Bedrock', desc: 'Generative AI — Claude, Llama, Nova' }, { name: 'ElastiCache', desc: 'Redis caching layer for scale' }, { name: 'ALB', desc: 'Load balancer across containers' }, { name: 'CloudFormation', desc: 'Infrastructure as code' }, { name: 'WAF + Cognito', desc: 'Security and enterprise auth' } ] },
+  'Series B': { color: '#9B6DF5', mrr: '$150K – $1M', services: [ { name: 'EKS', desc: 'Kubernetes at scale, multi-AZ' }, { name: 'Aurora Serverless', desc: 'Auto-scaling database' }, { name: 'AWS Organizations', desc: 'Multi-account governance' }, { name: 'SageMaker', desc: 'Custom ML model training' }, { name: 'AWS PrivateLink', desc: 'Enterprise data isolation' }, { name: 'Macie + Shield', desc: 'Data privacy + DDoS protection' } ] },
+  'Series C+': { color: '#F5C842', mrr: '$1M+', services: [ { name: 'Trainium / Inferentia', desc: 'Custom AI chips, 40-60% cost cut' }, { name: 'AWS Control Tower', desc: 'Enterprise governance at scale' }, { name: 'Reserved Instances', desc: 'Commit for 40-60% savings' }, { name: 'AWS Marketplace', desc: 'List product for enterprise distribution' }, { name: 'APN Partner', desc: 'AWS Partner Network co-sell status' }, { name: 'Graviton', desc: 'ARM processors for compute savings' } ] }
+};
+
+// ── API helpers — all go through Flask backend ──────────
+async function apiGet(table, params = {}) {
+  const url = new URL(`/api/airtable/${table}`, window.location.origin);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+  const resp = await fetch(url);
+  return resp.json();
+}
+
+async function apiPost(table, fields) {
+  const resp = await fetch(`/api/airtable/${table}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ records: [{ fields }] })
+  });
+  return resp.json();
+}
+
+async function apiPatch(table, recordId, fields) {
+  const resp = await fetch(`/api/airtable/${table}/${recordId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields })
+  });
+  return resp.json();
+}
+
+// ── Helpers ──────────────────────────────────────────────
+function stageBadgeClass(stage) {
+  if (!stage) return 'badge-seed';
+  const s = stage.toLowerCase();
+  if (s.includes('pre')) return 'badge-preseed';
+  if (s === 'seed') return 'badge-seed';
+  if (s.includes('series a')) return 'badge-a';
+  if (s.includes('series b')) return 'badge-b';
+  return 'badge-c';
+}
+function priorityBadgeClass(p) { if (!p) return 'badge-low'; return p==='High'?'badge-high':p==='Medium'?'badge-medium':'badge-low'; }
+function statusBadgeClass(s) { if (!s) return 'badge-monitoring'; return s==='Active'?'badge-active':s==='Monitoring'?'badge-monitoring':'badge-dormant'; }
+function initials(name) { if (!name) return '?'; return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function formatStack(text) { if (!text) return '<div class="text-muted">No data</div>'; return text.split('\n').filter(Boolean).map(l=>`<div class="stack-item"><span class="stack-dot dot-green"></span>${l.replace(/^[•\-]\s*/,'')}</div>`).join(''); }
+function formatNext(text)  { if (!text) return '<div class="text-muted">No data</div>'; return text.split('\n').filter(Boolean).map(l=>`<div class="stack-item"><span class="stack-dot dot-blue"></span>${l.replace(/^[•\-]\s*/,'')}</div>`).join(''); }
+function formatSignals(text){ if (!text) return '<div class="text-muted">No data</div>'; return text.split('\n').filter(Boolean).map(l=>`<div class="signal-item"><span class="signal-icon">⚡</span>${l.replace(/^[•\-]\s*/,'')}</div>`).join(''); }
+
+// ── Login ────────────────────────────────────────────────
+function login() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { document.getElementById('name-input').focus(); return; }
+  managerName  = name;
+  managerEmail = document.getElementById('email-input').value.trim();
+  document.getElementById('manager-name-display').textContent = name;
+  document.getElementById('manager-avatar').textContent = initials(name);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  switchTab('pipeline');
+  loadPortfolio();
+}
+document.getElementById('name-input').addEventListener('keydown', e => { if (e.key==='Enter') login(); });
+
+// ── Tab switching ────────────────────────────────────────
+function switchTab(tab) {
+  ['portfolio','database','pipeline','stagemap'].forEach(t => {
+    document.getElementById(`view-${t}`).classList.add('hidden');
+    document.getElementById(`tab-${t}`).classList.remove('active');
+  });
+  document.getElementById(`view-${tab}`).classList.remove('hidden');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'database' && !dbLoaded) loadDatabase();
+  if (tab === 'stagemap') renderStageMap();
+  if (tab === 'pipeline') renderPipeline();
+}
+
+// ── Portfolio ────────────────────────────────────────────
+async function loadPortfolio() {
+  portfolioData = [...DEMO_PORTFOLIO];
+  renderPortfolioList();
+  renderPipeline();
+  try {
+    const data = await apiGet(TABLE_PORTFOLIO, { filterByFormula: `{Assigned To} = "${managerName}"`, pageSize: 100 });
+    if (data.records && data.records.length > 0) {
+      const existingNames = new Set(portfolioData.map(p => p.fields['Startup Name']));
+      data.records.forEach(r => { if (!existingNames.has(r.fields['Startup Name'])) portfolioData.push(r); });
+      renderPortfolioList();
+      renderPipeline();
+    }
+  } catch(e) { console.log('Using demo data only'); }
+}
+
+function renderPortfolioList() {
+  const list = document.getElementById('portfolio-list');
+  let items = portfolioFilter === 'all' ? portfolioData : portfolioData.filter(p => p.fields['Stage'] === portfolioFilter);
+  if (!items.length) { list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No startups yet</div><div class="empty-desc">Go to Full Database and add startups to your portfolio.</div></div>`; return; }
+  list.innerHTML = items.map(p => {
+    const f = p.fields;
+    return `<div class="company-item" onclick="selectPortfolioCompany('${p.id}')" id="pitem-${p.id}">
+      <div class="company-item-top"><div class="company-name">${f['Startup Name']||'Unknown'}</div><span class="badge ${priorityBadgeClass(f['Priority'])}">${f['Priority']||'Medium'}</span></div>
+      <div class="company-item-meta"><span class="badge ${stageBadgeClass(f['Stage'])}">${f['Stage']||'Seed'}</span><span class="company-desc">${f['Sector']||''}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function filterPortfolio(q) {
+  const items = portfolioData.filter(p => { const n=(p.fields['Startup Name']||'').toLowerCase(); const s=(p.fields['Sector']||'').toLowerCase(); return n.includes(q.toLowerCase())||s.includes(q.toLowerCase()); });
+  const list = document.getElementById('portfolio-list');
+  if (!items.length) { list.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div></div>`; return; }
+  list.innerHTML = items.map(p => `<div class="company-item" onclick="selectPortfolioCompany('${p.id}')" id="pitem-${p.id}"><div class="company-item-top"><div class="company-name">${p.fields['Startup Name']}</div><span class="badge ${priorityBadgeClass(p.fields['Priority'])}">${p.fields['Priority']||'Medium'}</span></div><div class="company-item-meta"><span class="badge ${stageBadgeClass(p.fields['Stage'])}">${p.fields['Stage']||'Seed'}</span><span class="company-desc">${p.fields['Sector']||''}</span></div></div>`).join('');
+}
+
+function setPortfolioFilter(stage, el) {
+  portfolioFilter = stage;
+  document.querySelectorAll('#portfolio-stage-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderPortfolioList();
+}
+
+function selectPortfolioCompany(id) {
+  document.querySelectorAll('.company-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`pitem-${id}`);
+  if (el) el.classList.add('active');
+  const company = portfolioData.find(p => p.id === id);
+  if (company) { renderPortfolioDetail(company); }
+}
+
+function renderPortfolioDetail(company) {
+  const f = company.fields;
+  const stage = f['Stage'] || 'Seed';
+  const stages = ['Pre-Seed','Seed','Series A','Series B','Series C+'];
+  const currentIdx = stages.indexOf(stage);
+  const stepper = stages.map((s,i) => {
+    let cls = i < currentIdx ? 'done' : i === currentIdx ? 'current' : '';
+    const labels = ['Pre','Seed','A','B','C+'];
+    return `<div class="stage-step ${cls}"><div class="stage-dot">${i<=currentIdx?'✓':labels[i]}</div><div class="stage-label">${s}</div></div>`;
+  }).join('');
+
+  document.getElementById('portfolio-detail').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${f['Startup Name']||'Unknown'}</div>
+        <div class="detail-meta">
+          <span class="badge ${stageBadgeClass(stage)}">${stage}</span>
+          <span class="badge ${priorityBadgeClass(f['Priority'])}">${f['Priority']||'Medium'}</span>
+          <span class="badge ${statusBadgeClass(f['Relationship Status'])}">${f['Relationship Status']||'Active'}</span>
+          ${f['Website']?`<a href="${f['Website']}" target="_blank" class="detail-link">↗ Website</a>`:''}
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn-accent" onclick="generateAdvisory('${company.id}')">⚡ Generate Advisory</button>
+      </div>
+    </div>
+    <div class="stage-stepper">${stepper}</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-title">Current Profile</div>
+        <div class="stack-item"><span class="stack-dot dot-green"></span><strong>Sector:</strong>&nbsp;${f['Sector']||'—'}</div>
+        <div class="stack-item"><span class="stack-dot dot-green"></span><strong>Last Contact:</strong>&nbsp;${f['Last Contact Date']||'—'}</div>
+        <div class="stack-item"><span class="stack-dot dot-green"></span><strong>Next Action:</strong>&nbsp;${f['Next Action']||'—'}</div>
+        <div class="stack-item"><span class="stack-dot dot-yellow"></span><strong>Due:</strong>&nbsp;${f['Next Action Due']||'—'}</div>
+        <div class="stack-item"><span class="stack-dot dot-blue"></span><strong>Source:</strong>&nbsp;${f['Source']||'—'}</div>
+      </div>
+      <div class="card"><div class="card-title">Current Tech Stack</div>${formatStack(f['Current Tech Stack']||f['Current AWS Stack'])}</div>
+      <div class="card"><div class="card-title">Next Recommendations</div>${formatNext(f['Next Tech Recommendations']||f['Next AWS Recommendations'])}</div>
+      <div class="card"><div class="card-title">Stage Signals</div>${formatSignals(f['Stage Signals'])}</div>
+      <div class="card card-full">
+        <div class="card-title">Claude Advisory</div>
+        <div class="advisory-box" id="advisory-${company.id}">${f['Claude Advisory']||'<span style="color:var(--muted)">Click ⚡ Generate Advisory to get a personalized recommendation for this startup.</span>'}</div>
+      </div>
+      <div class="card card-full">
+        <div class="card-title">Notes</div>
+        <textarea class="notes-textarea" id="notes-${company.id}" placeholder="Add notes...">${f['Notes']||''}</textarea>
+        <div class="notes-footer"><button class="btn-save" onclick="saveNotes('${company.id}')">Save Notes</button></div>
+      </div>
+    </div>`;
+}
+
+async function saveNotes(id) {
+  const notes = document.getElementById(`notes-${id}`).value;
+  const company = portfolioData.find(p => p.id === id);
+  if (!company) return;
+  if (id.startsWith('demo')) { company.fields['Notes'] = notes; alert('Saved (demo mode)'); return; }
+  try { await apiPatch(TABLE_PORTFOLIO, id, { 'Notes': notes }); company.fields['Notes'] = notes; alert('Notes saved ✓'); } catch(e) { console.error(e); }
+}
+
+async function generateAdvisory(id) {
+  const company = portfolioData.find(p => p.id === id);
+  if (!company) return;
+  const f = company.fields;
+  const box = document.getElementById(`advisory-${id}`);
+  if (!box) return;
+  box.classList.add('streaming');
+  box.textContent = '';
+
+  const prompt = `You are an AWS Startup Investor Manager advisor. Generate a concise investment advisory for this startup:
+
+Company: ${f['Startup Name']}
+Sector: ${f['Sector']}
+Stage: ${f['Stage']}
+Current Tech Stack: ${f['Current Tech Stack']||f['Current AWS Stack']}
+Next Recommendations: ${f['Next Tech Recommendations']||f['Next AWS Recommendations']}
+
+Provide:
+1. A 2-sentence company assessment
+2. Three specific AWS next actions (be concrete)
+3. One key risk to watch at this stage
+4. One comparable YC company that successfully made this transition
+
+Keep it under 200 words. Be direct and actionable.`;
+
+  try {
+    const resp = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400, stream: true, messages: [{ role: 'user', content: prompt }] })
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let advisory = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          try { const parsed = JSON.parse(data); const text = parsed?.delta?.text||''; if (text) { advisory += text; box.textContent = advisory; } } catch(e) {}
+        }
+      }
+    }
+    box.classList.remove('streaming');
+    company.fields['Claude Advisory'] = advisory;
+  } catch(e) { box.classList.remove('streaming'); box.textContent = 'Error generating advisory. Check server connection.'; }
+}
+
+// ── Database ─────────────────────────────────────────────
+async function loadDatabase() {
+  dbLoaded = true;
+  const list = document.getElementById('database-list');
+  list.innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading from Airtable...</div>';
+  try {
+    const data = await apiGet(TABLE_STARTUPS, { pageSize: 100 });
+    databaseData = data.records || [];
+    dbOffset = data.offset || null;
+    renderDatabaseList();
+    if (dbOffset) loadMoreDatabase();
+  } catch(e) { list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load database</div><div class="empty-desc">Check server connection.</div></div>`; }
+}
+
+async function loadMoreDatabase() {
+  try {
+    while (dbOffset) {
+      const data = await apiGet(TABLE_STARTUPS, { pageSize: 100, offset: dbOffset });
+      databaseData = [...databaseData, ...(data.records||[])];
+      dbOffset = data.offset || null;
+      renderDatabaseList();
+      await new Promise(r => setTimeout(r, 200));
+    }
+  } catch(e) { console.error(e); }
+}
+
+function renderDatabaseList(items) {
+  const data = items || (dbFilter === 'all' ? databaseData : databaseData.filter(r => r.fields['Stage'] === dbFilter));
+  const list = document.getElementById('database-list');
+  if (!data.length) { list.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><button class="btn-secondary mt-8" onclick="openAddModal()">+ Add New Company</button></div>`; return; }
+  const show = data.slice(0, 200);
+  list.innerHTML = show.map(r => `<div class="company-item" onclick="selectDbCompany('${r.id}')" id="dbitem-${r.id}">
+    <div class="company-item-top"><div class="company-name">${r.fields['Name']||'Unknown'}</div><span class="badge ${stageBadgeClass(r.fields['Stage'])}">${r.fields['Stage']||'Seed'}</span></div>
+    <div class="company-item-meta"><span style="font-size:10px;color:var(--muted)">${r.fields['Batch']||''}</span><span class="company-desc">${(r.fields['Sector']||'').slice(0,30)}</span></div>
+  </div>`).join('') + (data.length > 200 ? `<div class="loading-row" style="font-size:11px">Showing 200 of ${data.length}. Use search to filter.</div>` : '');
+}
+
+function filterDatabase(q) {
+  if (!q) { renderDatabaseList(); return; }
+  const filtered = databaseData.filter(r => { const n=(r.fields['Name']||'').toLowerCase(); const d=(r.fields['Description']||'').toLowerCase(); const s=(r.fields['Sector']||'').toLowerCase(); return n.includes(q.toLowerCase())||d.includes(q.toLowerCase())||s.includes(q.toLowerCase()); });
+  renderDatabaseList(filtered);
+}
+
+function setDbFilter(stage, el) {
+  dbFilter = stage;
+  document.querySelectorAll('#db-stage-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderDatabaseList();
+}
+
+function selectDbCompany(id) {
+  document.querySelectorAll('.company-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`dbitem-${id}`);
+  if (el) el.classList.add('active');
+  const company = databaseData.find(r => r.id === id);
+  if (company) renderDatabaseDetail(company);
+}
+
+function renderDatabaseDetail(company) {
+  const f = company.fields;
+  const stage = f['Stage'] || 'Seed';
+  const inPortfolio = portfolioData.some(p => p.fields['Startup Name'] === f['Name']);
+  document.getElementById('database-detail').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${f['Name']||'Unknown'}</div>
+        <div class="detail-meta">
+          <span class="badge ${stageBadgeClass(stage)}">${stage}</span>
+          ${f['Batch']?`<span class="badge badge-monitoring">${f['Batch']}</span>`:''}
+          ${f['Status']?`<span class="badge badge-${f['Status']==='Active'?'active':'monitoring'}">${f['Status']}</span>`:''}
+          ${f['Website']?`<a href="${f['Website']}" target="_blank" class="detail-link">↗ Website</a>`:''}
+        </div>
+      </div>
+      <div class="detail-actions">
+        ${inPortfolio?`<button class="btn-secondary" disabled>✓ In Portfolio</button>`:`<button class="btn-accent" onclick="openAddModal('${company.id}')">+ Add to Portfolio</button>`}
+      </div>
+    </div>
+    ${f['Description']?`<div class="card" style="margin-bottom:16px"><div class="card-title">About</div><div style="font-size:13px;line-height:1.6">${f['Description']}</div></div>`:''}
+    <div class="cards-grid">
+      <div class="card"><div class="card-title">Current Tech Stack</div>${formatStack(f['Current AWS Stack'])}</div>
+      <div class="card"><div class="card-title">Next Recommendations</div>${formatNext(f['Next AWS Recommendations'])}</div>
+      <div class="card card-full"><div class="card-title">Stage Signals</div>${formatSignals(f['Stage Signals'])}</div>
+    </div>`;
+}
+
+// ── Add to portfolio modal ───────────────────────────────
+function openAddModal(companyId) {
+  if (companyId) {
+    const company = databaseData.find(r => r.id === companyId);
+    if (!company) return;
+    pendingAddCompany = company;
+    const f = company.fields;
+    document.getElementById('modal-company-info').innerHTML = `<strong>${f['Name']}</strong><br><span style="color:var(--muted);font-size:12px">${f['Sector']||''} · ${f['Stage']||''} · ${f['Batch']||''}</span>`;
+  }
+  document.getElementById('add-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('add-modal').classList.remove('open'); pendingAddCompany = null; }
+
+async function confirmAddToPortfolio() {
+  if (!pendingAddCompany) return;
+  const f = pendingAddCompany.fields;
+  const today = new Date().toISOString().split('T')[0];
+  const newRecord = {
+    'Startup Name': f['Name'], 'Startup Website': f['Website']||'', 'Sector': f['Sector']||'',
+    'Stage': f['Stage']||'Seed', 'Priority': document.getElementById('modal-priority').value,
+    'Relationship Status': document.getElementById('modal-status').value,
+    'Next Action': document.getElementById('modal-action').value,
+    'Notes': document.getElementById('modal-notes').value,
+    'Manager Name': managerName, 'Manager Email': managerEmail, 'Assigned To': managerName,
+    'Date Assigned': today, 'Date Added': today, 'Added By': managerName, 'Source': 'YC Database',
+    'Current Tech Stack': f['Current AWS Stack']||'', 'Next Tech Recommendations': f['Next AWS Recommendations']||'',
+    'Stage Signals': f['Stage Signals']||''
+  };
+  try {
+    const result = await apiPost(TABLE_PORTFOLIO, newRecord);
+    const newId = result.records?.[0]?.id || `local-${Date.now()}`;
+    portfolioData.push({ id: newId, fields: { ...newRecord, 'Startup Name': f['Name'] } });
+    closeModal(); renderPortfolioList(); renderPipeline();
+    alert(`${f['Name']} added to your portfolio ✓`);
+  } catch(e) {
+    const newId = `local-${Date.now()}`;
+    portfolioData.push({ id: newId, fields: newRecord });
+    closeModal(); renderPortfolioList(); renderPipeline();
+    alert('Added locally (Airtable sync failed)');
+  }
+}
+
+// ── Pipeline ─────────────────────────────────────────────
+function renderPipeline() {
+  const total = portfolioData.length;
+  const high  = portfolioData.filter(p=>p.fields['Priority']==='High').length;
+  const active= portfolioData.filter(p=>p.fields['Relationship Status']==='Active').length;
+  const today = new Date().toISOString().split('T')[0];
+  const overdue=portfolioData.filter(p=>{ const d=p.fields['Next Action Due']; return d&&d<today; }).length;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-high').textContent=high;
+  document.getElementById('stat-active').textContent=active;
+  document.getElementById('stat-overdue').textContent=overdue;
+
+  const cols = {'Pre-Seed':[],'Seed':[],'Series A':[],'Series B':[],'Series C+':[]};
+  portfolioData.forEach(p => { const s=p.fields['Stage']||'Seed'; if(cols[s])cols[s].push(p); else cols['Seed'].push(p); });
+  const colMap = {'Pre-Seed':'preseed','Seed':'seed','Series A':'a','Series B':'b','Series C+':'c'};
+  Object.entries(cols).forEach(([stage,items]) => {
+    const key=colMap[stage];
+    document.getElementById(`k-${key}-count`).textContent=items.length;
+    document.getElementById(`k-${key}`).innerHTML=items.map(p=>`<div class="kanban-card" onclick="switchTab('portfolio');setTimeout(()=>selectPortfolioCompany('${p.id}'),100)"><div class="kanban-card-name">${p.fields['Startup Name']||'Unknown'}</div><div class="kanban-card-meta"><span class="kanban-card-sector">${(p.fields['Sector']||'').slice(0,20)}</span><span class="badge ${priorityBadgeClass(p.fields['Priority'])}" style="font-size:9px">${p.fields['Priority']||'Med'}</span></div></div>`).join('')||'<div style="color:var(--muted);font-size:11px;padding:8px;text-align:center">None</div>';
+  });
+
+  const serviceCounts={};
+  portfolioData.forEach(p => {
+    const next=p.fields['Next Tech Recommendations']||p.fields['Next AWS Recommendations']||'';
+    next.split('\n').filter(Boolean).forEach(line => { const s=line.replace(/^[•\-]\s*/,'').split(' (')[0].trim(); if(s)serviceCounts[s]=(serviceCounts[s]||0)+1; });
+  });
+  const sorted=Object.entries(serviceCounts).sort((a,b)=>b[1]-a[1]).slice(0,16);
+  document.getElementById('heatmap-grid').innerHTML=sorted.map(([s,c])=>`<div class="heatmap-item">${s}<span class="heatmap-count">${c}</span></div>`).join('')||'<div class="text-muted">Add startups to your portfolio to see heatmap.</div>';
+}
+
+function refreshPipeline() { loadPortfolio().then(()=>renderPipeline()); }
+
+// ── AWS Stage Map ────────────────────────────────────────
+function renderStageMap() {
+  document.getElementById('stagemap-grid').innerHTML=Object.entries(AWS_STAGE_MAP).map(([stage,data])=>`
+    <div class="stagemap-col">
+      <div class="stagemap-col-header"><div class="stagemap-col-title" style="color:${data.color}">${stage}</div><div class="stagemap-mrr">MRR ${data.mrr}</div></div>
+      <div class="stagemap-services">${data.services.map(s=>`<div class="stagemap-service"><div class="stagemap-service-name">${s.name}</div><div class="stagemap-service-desc">${s.desc}</div></div>`).join('')}</div>
+    </div>`).join('');
+}
+
+document.getElementById('add-modal').addEventListener('click', function(e){ if(e.target===this)closeModal(); });
+</script>
+</body>
+</html>

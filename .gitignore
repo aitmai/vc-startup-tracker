@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+node_modules/
+.venv/
+venv/
+*.log
+output/
+
+# Auto-added by gitpush.py
+credentials.json
+secrets.json
+service_account.json
+token.json
