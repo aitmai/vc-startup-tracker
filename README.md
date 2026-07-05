@@ -8,7 +8,7 @@
 [![render](https://img.shields.io/badge/deploy-Render-46E3B7)](https://render.com)
 [![live](https://img.shields.io/badge/live-vc--startup--tracker.onrender.com-brightgreen)](https://vc-startup-tracker.onrender.com)
 
-AI-powered startup intelligence dashboard for Investor Managers — track assigned portfolio companies across Pre-Seed through Series C+, monitor funding stage progression, and generate Claude-powered investment advisories.
+AI-powered startup intelligence dashboard for Investor Managers — track assigned portfolio companies across Seed through Series C+, monitor funding stage progression, and generate Claude-powered investment advisories.
 
 ---
 
@@ -20,13 +20,15 @@ AI-powered startup intelligence dashboard for Investor Managers — track assign
 
 ## Features
 
-- **My Portfolio** — personal startup list with priority, relationship status, next actions, and notes per company
-- **Full Database** — 1,900+ real YC companies searchable by name, sector, and stage with one-click portfolio add
-- **Pipeline Overview** — Kanban board across all five funding stages, stats row, and tech services heatmap showing what your portfolio needs most right now
+- **Login persistence** — name saved to localStorage, auto-login on return visits with logout button
+- **My Portfolio** — personal startup list per manager with priority, relationship status, next actions, notes, stage stepper, and Claude advisory per company
+- **Full Database** — ~900 real YC companies (Seed+, active only, W20–present) searchable by name, sector, and stage with one-click portfolio add
+- **Pipeline Overview** — Kanban board across all five funding stages, stats row (total, high priority, active, overdue), and tech services heatmap
 - **Tech Stage Map** — reference grid showing typical infrastructure adoption at each funding stage with MRR ranges
 - **Claude Advisory** — streaming AI-generated investment advisory per company with concrete next actions, risk flags, and comparable companies
 - **Secure token handling** — all API tokens stay server-side via Flask proxy, never exposed in the browser
-- **Airtable persistence** — portfolio assignments, notes, and funding rounds persist across sessions
+- **Airtable persistence** — portfolio assignments, notes, and funding rounds persist across sessions per manager
+- **Save error handling** — explicit error alerts if Airtable write fails, no silent local-only adds
 
 ---
 
@@ -47,14 +49,21 @@ AI-powered startup intelligence dashboard for Investor Managers — track assign
 
 ```
 vc-startup-tracker/
-├── app.py                      # Flask backend — serves dashboard, proxies all API calls
+├── app.py                          # Flask backend — serves dashboard, proxies all API calls
 ├── templates/
-│   └── dashboard.html          # Full dashboard UI
-├── scraper.py                  # YC company scraper → writes to Airtable
-├── setup_airtable.py           # Creates all fields in startups table
-├── setup_manager_portfolio.py  # Creates all fields in manager_portfolio table
+│   └── dashboard.html              # Full dashboard UI — all four tabs
+├── scraper.py                      # Original YC scraper (all companies)
+├── load_fresh.py                   # Fresh load — Seed+ only, real sectors only
+├── load_fresh2.py                  # Fresh load v2 — two-pass, fills to 900
+├── load_balanced.py                # Balanced load — quota per stage, no public
+├── topup_startups.py               # Top-up — adds N new companies without duplicates
+├── trim_startups.py                # Trim — removes dead/inactive and old batches
+├── trim_startups2.py               # Trim pass 2 — aggressive cut to target count
+├── reload_startups.py              # Reload — deletes Pre-Seed/Unknown, refetches
+├── setup_airtable.py               # Creates all fields in startups table
+├── setup_manager_portfolio.py      # Creates all fields in manager_portfolio table
 ├── requirements.txt
-├── render.yaml                 # Render deployment config
+├── render.yaml                     # Render deployment config
 ├── .env.example
 └── .gitignore
 ```
@@ -79,7 +88,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Open `.env` and fill in all values:
+Open `.env` and fill in:
 ```
 AIRTABLE_TOKEN=your_personal_access_token
 AIRTABLE_BASE_ID=your_base_id
@@ -95,9 +104,9 @@ python setup_airtable.py
 python setup_manager_portfolio.py
 ```
 
-**5. Load YC company data**
+**5. Load startup data**
 ```bash
-python scraper.py
+python load_balanced.py
 ```
 
 **6. Run the dashboard**
@@ -108,13 +117,41 @@ python app.py
 
 ---
 
+## Data Scripts
+
+All scripts accept `y` or `yes` / `n` or `no` at confirmation prompts.
+
+| Script | Purpose |
+|--------|---------|
+| `load_balanced.py` | **Recommended first load** — 900 companies, balanced by stage (Seed=350, A=300, B=150, C+=100), no Pre-Seed, no public, no inactive |
+| `topup_startups.py` | Add more companies without duplicates — checks existing names before writing |
+| `trim_startups.py` | Remove dead/inactive companies and old batches |
+| `trim_startups2.py` | Aggressive trim — delete oldest records until under target count |
+| `load_fresh.py` | Fresh load — Seed+ only, skips companies with no sector tags |
+| `load_fresh2.py` | Fresh load v2 — fills remaining slots with "Technology" label for untagged |
+| `scraper.py` | Original scraper — all companies, all stages |
+
+**Recommended data workflow:**
+```bash
+# Initial setup (empty table)
+python load_balanced.py
+
+# Add more companies later without duplicates
+python topup_startups.py
+
+# Clean up bad data
+python trim_startups.py
+```
+
+---
+
 ## Deploy to Render
 
 1. Push repo to GitHub
 2. Go to render.com → New → Web Service
-3. Connect `aitmai/vc-startup-tracker` (or paste the public repo URL)
+3. Connect `aitmai/vc-startup-tracker` or paste the public repo URL under Public Git Repository tab
 4. Render auto-detects `render.yaml`
-5. Add environment variables in the Render dashboard:
+5. Add environment variables:
    - `AIRTABLE_TOKEN`
    - `ANTHROPIC_API_KEY`
 6. Click Deploy — live in ~2 minutes
@@ -142,14 +179,14 @@ python app.py
 |-------|------|-------------|
 | Name | Text | Company name |
 | Batch | Text | YC batch (e.g. W21, S22) |
-| Sector | Text | Industry tags |
+| Sector | Text | Industry tags — "Technology" if untagged |
 | Description | Text | One-liner |
 | Website | URL | Company website |
-| Status | Select | Active / Acquired / Public / Dead |
+| Status | Select | Active / Acquired |
 | Location | Text | HQ location |
-| Stage | Select | Pre-Seed / Seed / Series A / B / C+ |
-| Current Tech Stack | Long text | Services active at this stage |
-| Next Tech Recommendations | Long text | Services to adopt next |
+| Stage | Select | Seed / Series A / Series B / Series C+ |
+| Current AWS Stack | Long text | Infrastructure active at this stage |
+| Next AWS Recommendations | Long text | Infrastructure to adopt next |
 | Stage Signals | Long text | Metrics triggering next stage |
 | Source | Select | YC Scrape / Manual Add |
 | Date Added | Text | Date written to Airtable |
@@ -159,8 +196,11 @@ python app.py
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Startup Name | Text | Linked to startups table |
-| Manager Name | Text | Assigned investor manager |
+| Manager Name | Text | Login name — used to filter portfolio per manager |
+| Manager Email | Text | Manager email |
+| Startup Name | Text | Company name |
+| Startup Website | URL | Company website |
+| Sector | Text | Industry sector |
 | Stage | Select | Current funding stage |
 | Priority | Select | High / Medium / Low |
 | Relationship Status | Select | Active / Monitoring / Dormant |
@@ -170,8 +210,12 @@ python app.py
 | Funding Rounds | Long text | JSON array of rounds |
 | Current Tech Stack | Long text | Stack at current stage |
 | Next Tech Recommendations | Long text | Stack for next stage |
+| Stage Signals | Long text | Metrics triggering next stage |
 | Claude Advisory | Long text | AI-generated advisory |
 | Notes | Long text | Timestamped manager notes |
+| Date Added | Text | Date record was created |
+| Added By | Text | Manager who created this record |
+| Source | Select | YC Database / Manual Add / Referral / Event / Inbound |
 
 ---
 
@@ -187,11 +231,23 @@ python app.py
 
 ---
 
+## Data Rules
+
+- No Pre-Seed companies in the database
+- No public companies (IPO'd)
+- No inactive / dead / closed companies
+- Companies without YC sector tags are labeled "Technology"
+- All scripts check for duplicates before writing
+- All confirmation prompts accept `y`, `yes`, `n`, or `no`
+
+---
+
 ## Security
 
 - All API tokens handled server-side via Flask — never exposed in the browser
 - Never commit `.env` to GitHub — `.gitignore` excludes it automatically
 - Airtable token scopes required: `data.records:read`, `data.records:write`, `schema.bases:read`, `schema.bases:write`
+- Save operations show explicit error messages if Airtable write fails — no silent failures
 
 ---
 
